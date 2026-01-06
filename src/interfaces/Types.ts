@@ -14,19 +14,20 @@ export interface Match {
   explanationId: string;
   isCorrect: boolean;
 }
-
-
 export interface OutgoingGameMessage {
-  // Juego → Host: resultado
-  type: "MATCH_COMPLETED" | "ANSWER_SELECTED" | "GAME_READY" | "GAME_ERROR";
-  payload:{
-    matches: Array<{
-      questionId: string;
-      explanationId: string;
-      isCorrect: boolean;
-    }>;
-    correctMatches?: number;
-    totalMatches?: number;
-    error?: string;
-  };
+  type: string;
 }
+
+export interface GameResultMessage extends OutgoingGameMessage {
+  type: "GAME_COMPLETED";
+  gameId: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  attempts: number;
+  matches: {
+    questionId: string;
+    explanationId: string;
+    isCorrect: boolean;
+  }[];
+}
+

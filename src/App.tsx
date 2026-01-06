@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import type { Question } from './interfaces/question.interface';
-import type { IncomingGameMessage, Match, OutgoingGameMessage } from './interfaces/Types';
+import type { IncomingGameMessage, Match, GameResultMessage } from './interfaces/Types';
 import type { Explanation } from './interfaces/explanation.interface';
 
 
@@ -16,6 +16,9 @@ function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   //const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const totalMatches = displayQuestions.length;
+  const completedMatches = matches.filter(m => m.isCorrect).length;
+
   
 
 // Función para mezclar un array
@@ -120,6 +123,8 @@ const handleMatch = (explanationId: string) => {
   setMatches(prev => [...prev, newMatch]);
   setDisabledExplanationIds(prev => [...prev, explanationId]);
 
+  if (matches.length >= displayQuestions.length) return;
+
   // limpiar selección
   setSelectedQuestion(null);
 };
@@ -132,17 +137,25 @@ const handleMatch = (explanationId: string) => {
 
 // Enviar resultados al host
 const sendResultsToHost = () => {
-  const message: OutgoingGameMessage = {
-    type: "MATCH_COMPLETED",
-    payload: {
-      matches,
-      correctMatches: matches.filter(m => m.isCorrect).length,
-      totalMatches: displayQuestions.length,
-    },
+  const message: GameResultMessage = {
+    type: "GAME_COMPLETED",
+    gameId: "match-question-explanation",
+    totalQuestions: totalMatches,
+    correctAnswers: completedMatches,
+    attempts: matches.length,
+    matches,
   };
+
+  console.log("ENVIANDO RESULTADOS AL HOST", message);
 
   window.parent.postMessage(message, "*");
 };
+// Enviar resultados automáticamente cuando se completen todas las coincidencias
+useEffect(() => {
+  if (completedMatches === totalMatches && totalMatches > 0) {
+    sendResultsToHost();
+  }
+}, [completedMatches, totalMatches]);
 
 
   useEffect(() => {
@@ -221,11 +234,28 @@ const allQ = buildAllQuestions(
   }, []);
     // UI mínima
    return (
+
+
        <>
+       <div
+  style={{
+    marginBottom: "16px",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    backgroundColor: "#f3f4f6",
+    textAlign: "center",
+    fontWeight: 500,
+    color: "#111827",
+  }}
+>
+  Progreso: {completedMatches} / {totalMatches}
+</div>
+
        <div style={{ display: "flex", gap: "3rem" }}>
        {/* Preguntas */}
        <div>
          <h3>Preguntas</h3>
+
             {displayQuestions.map((q) => {
            const match = getMatchResultForQuestion(q._id);
 
@@ -237,6 +267,7 @@ const allQ = buildAllQuestions(
         if (!match) setSelectedQuestion(q._id);
       }}
       style={{
+
         padding: "12px",
         marginBottom: "10px",
         borderRadius: "8px",
@@ -244,16 +275,19 @@ const allQ = buildAllQuestions(
         cursor: match ? "default" : "pointer",
         backgroundColor: match
           ? match.isCorrect
-            ? "#dcfce7" // verde
-            : "#fee2e2" // rojo
+          ? "#dcfce7"
+          : "#fee2e2"
           : selectedQuestion === q._id
-          ? "#e0e7ff" // seleccionado
-          : "#fff",
-        borderColor: match
-          ? match.isCorrect
-            ? "#22c55e"
-            : "#ef4444"
-          : "#d1d5db",
+         ? "#e0e7ff"
+        : "#fff",
+       borderColor: match
+       ? match.isCorrect
+       ? "#22c55e"
+       : "#ef4444"
+       : "#d1d5db",
+
+       // 🔴 AGREGA ESTO
+        color: "#111827",
       }}
     >
       <strong>{q.text}</strong>
@@ -271,6 +305,7 @@ const allQ = buildAllQuestions(
        {/* Explicaciones */}
        <div>
          <h3>Explicaciones</h3>
+
              {displayExplanations.map((e) => {
   const used = isExplanationUsed(e._id);
 
@@ -290,6 +325,8 @@ const allQ = buildAllQuestions(
         cursor: used ? "not-allowed" : "pointer",
         backgroundColor: used ? "#e5e7eb" : "#fff",
         opacity: used ? 0.6 : 1,
+
+        color: "#111827",
       }}
     >
       {e.text}
