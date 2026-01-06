@@ -123,6 +123,13 @@ const handleMatch = (explanationId: string) => {
   // limpiar selección
   setSelectedQuestion(null);
 };
+
+ const getMatchResultForQuestion = (questionId: string) =>
+  matches.find(m => m.questionId === questionId);
+
+ const isExplanationUsed = (explanationId: string) =>
+  matches.some(m => m.explanationId === explanationId);
+
 // Enviar resultados al host
 const sendResultsToHost = () => {
   const message: OutgoingGameMessage = {
@@ -219,37 +226,76 @@ const allQ = buildAllQuestions(
        {/* Preguntas */}
        <div>
          <h3>Preguntas</h3>
-         
-         {displayQuestions.map((q) => (
-           <button
-             key={q._id}
-             onClick={() => {
-           setSelectedQuestion(q._id);
-          }}
-             >{q.text}
-           </button>
-         ))}
+            {displayQuestions.map((q) => {
+           const match = getMatchResultForQuestion(q._id);
+
+     return (
+
+     <div
+      key={q._id}
+      onClick={() => {
+        if (!match) setSelectedQuestion(q._id);
+      }}
+      style={{
+        padding: "12px",
+        marginBottom: "10px",
+        borderRadius: "8px",
+        border: "2px solid",
+        cursor: match ? "default" : "pointer",
+        backgroundColor: match
+          ? match.isCorrect
+            ? "#dcfce7" // verde
+            : "#fee2e2" // rojo
+          : selectedQuestion === q._id
+          ? "#e0e7ff" // seleccionado
+          : "#fff",
+        borderColor: match
+          ? match.isCorrect
+            ? "#22c55e"
+            : "#ef4444"
+          : "#d1d5db",
+      }}
+    >
+      <strong>{q.text}</strong>
+
+      {match && (
+        <div style={{ marginTop: "6px", fontSize: "20px" }}>
+          {match.isCorrect ? "✅" : "❌"}
+        </div>
+      )}
+    </div>
+  );
+})}
        </div>
 
        {/* Explicaciones */}
        <div>
          <h3>Explicaciones</h3>
-         {displayExplanations.map((e) => (
-           <button
-             key={e._id}
-             disabled={disabledExplanationIds.includes(e._id)}
-             onClick={() => handleMatch(e._id)}
-             style={{
-               display: "block",
-               marginBottom: "8px",
-               opacity: disabledExplanationIds.includes(e._id)
-                 ? 0.5
-                 : 1,
-             }}
-           >
-             {e.text}
-           </button>
-         ))}
+             {displayExplanations.map((e) => {
+  const used = isExplanationUsed(e._id);
+
+  return (
+    <div
+      key={e._id}
+      onClick={() => {
+        if (!used && selectedQuestion) {
+          handleMatch(e._id);
+        }
+      }}
+      style={{
+        padding: "12px",
+        marginBottom: "10px",
+        borderRadius: "8px",
+        border: "2px solid #d1d5db",
+        cursor: used ? "not-allowed" : "pointer",
+        backgroundColor: used ? "#e5e7eb" : "#fff",
+        opacity: used ? 0.6 : 1,
+      }}
+    >
+      {e.text}
+    </div>
+  );
+})}
          {error && (
         <p style={{ color: "red", marginBottom: "12px" }}>
          {error}
