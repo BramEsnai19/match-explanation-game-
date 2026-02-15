@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import type { Question } from './interfaces/question.interface';
-import type { IncomingGameMessage, Match, GameResultMessage } from './interfaces/Types';
+import type { IncomingGameMessage, Match } from './interfaces/Types';
 import type { Explanation } from './interfaces/explanation.interface';
 
 
 function App() {
-  //const [currentQuestion, setCurrentQuestion] = useState<Question>();
+ 
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
 
   const [displayQuestions, setDisplayQuestions] = useState<Question[]>([]);
@@ -14,10 +14,33 @@ function App() {
   const [disabledExplanationIds, setDisabledExplanationIds] = useState<string[]>([]);
   
   const [matches, setMatches] = useState<Match[]>([]);
-  //const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const totalMatches = displayQuestions.length;
-  const completedMatches = matches.filter(m => m.isCorrect).length;
+  const completedMatches = matches.length;
+  const correctMatches = matches.filter(m => m.isCorrect).length;
+  const answeredCorrectly =
+  totalMatches > 0 && correctMatches === totalMatches;
+  const [mainQuestion, setMainQuestion] = useState<Question | null>(null);
+  const mainMatch = matches.find(
+  m => m.questionId === mainQuestion?._id
+);
+
+const mainExplanation = displayExplanations.find(
+  e => e._id === mainMatch?.explanationId
+);
+
+const matchColors = [
+   "#BFDBFE", // azul pastel
+  "#FDE68A", // amarillo pastel
+  "#C4B5FD", // lila pastel
+  "#FBCFE8", // rosa pastel
+  "#BBF7D0", // verde pastel
+  "#FED7AA", // naranja pastel
+];
+
+
+
+
 
   
 
@@ -56,11 +79,6 @@ const normalizeQuestion = (q: any): Question => ({
   return exists ? questions : [currentQuestion, ...questions];
 };
 
-  // Función para construir la pool de explicaciones
-const buildExplanationPool = (allQuestions: Question[]): Explanation[] => {
-  const pool = allQuestions.flatMap(q => q.explanations || []);
-  return uniqById(pool);
-};
 
 // Función para seleccionar preguntas a mostrar
 const pickDisplayQuestions = (all: Question[], mainId: string | undefined, count = 4): Question[] => {
@@ -69,41 +87,45 @@ const pickDisplayQuestions = (all: Question[], mainId: string | undefined, count
   const main = all.find(q => q._id === mainId);
   const others = all.filter(q => q._id !== mainId);
 
-  // Seleccionamos n-1 preguntas adicionales
   const pickedOthers = shuffle(others).slice(0, count - 1);
 
-  // Mezclamos la principal con las otras seleccionadas
   return shuffle([main!, ...pickedOthers]);
 };
 
 // Función para seleccionar explicaciones a mostrar
 const pickDisplayExplanations = (
-  pool: Explanation[],
-  mainQuestion: Question | undefined,
+  questions: Question[],
   count = 4
 ): Explanation[] => {
-  if (pool.length <= count) return shuffle(pool);
+  const correctExplanations: Explanation[] = [];
 
-  const mainExps = mainQuestion?.explanations || [];
-  const mainExpsUnique = uniqById(mainExps);
+  questions.forEach(q => {
+    if (q.explanations && q.explanations.length > 0) {
+      const unique = uniqById(q.explanations);
+      const randomCorrect =
+        unique[Math.floor(Math.random() * unique.length)];
+      correctExplanations.push(randomCorrect);
+    }
+  });
 
-  const result: Explanation[] = [];
-  // Incluya siempre una explicación de la pregunta principal si está disponible.
-  if (mainExpsUnique.length > 0) {
-    result.push(mainExpsUnique[Math.floor(Math.random() * mainExpsUnique.length)]);
-  }
+  const pool = uniqById(
+    questions.flatMap(q => q.explanations || [])
+  );
+  const remaining = pool.filter(
+    e => !correctExplanations.some(c => c._id === e._id)
+  );
+  const needed = Math.max(count - correctExplanations.length, 0);
+  const fillers = shuffle(remaining).slice(0, needed);
 
-  // rellene el resto desde la pool sin duplicados
-  const remainingPool = pool.filter(p => !result.some(r => r._id === p._id));
-  const picked = shuffle(remainingPool).slice(0, count - result.length);
-  return shuffle([...result, ...picked]);
+  return shuffle([...correctExplanations, ...fillers]);
+
 };
 // Función para verificar si una explicación coincide con la pregunta seleccionada
 const isCorrectMatch = (question: Question | undefined, explanation: Explanation | undefined): boolean => {
   if (!question || !explanation) return false;
   return (question.explanations || []).some(e => e._id === explanation._id);
 };
-// Manejar la selección de una explicación
+
 const handleMatch = (explanationId: string) => {
   if (!selectedQuestion) return;
 
@@ -113,50 +135,42 @@ const handleMatch = (explanationId: string) => {
   const q = displayQuestions.find(q => q._id === selectedQuestion);
   const exp = displayExplanations.find(e => e._id === explanationId);
 
+    if (!q || !exp) return;
+
   const correct = isCorrectMatch(q, exp);
 
-  const newMatch: Match = {
-    questionId: selectedQuestion,
-    explanationId,
-    isCorrect: correct,
-  };
-  setMatches(prev => [...prev, newMatch]);
-  setDisabledExplanationIds(prev => [...prev, explanationId]);
 
-  if (matches.length >= displayQuestions.length) return;
+const colorIndex = matches.length % matchColors.length;
+const baseColor = matchColors[colorIndex];
 
-  // limpiar selección
+
+  setMatches(prev => [
+    ...prev,
+    {
+      questionId: q._id,
+      explanationId: exp._id,
+      isCorrect: correct,
+      pairColor: baseColor,
+    
+    },
+  ]);
+  setDisabledExplanationIds(prev => [...prev, exp._id]);
   setSelectedQuestion(null);
+  
 };
 
- const getMatchResultForQuestion = (questionId: string) =>
-  matches.find(m => m.questionId === questionId);
 
  const isExplanationUsed = (explanationId: string) =>
   matches.some(m => m.explanationId === explanationId);
 
-// Enviar resultados al host
-const sendResultsToHost = () => {
-  const message: GameResultMessage = {
-    type: "GAME_COMPLETED",
-    gameId: "match-question-explanation",
-    totalQuestions: totalMatches,
-    correctAnswers: completedMatches,
-    attempts: matches.length,
-    matches,
-  };
 
-  console.log("ENVIANDO RESULTADOS AL HOST", message);
 
-  window.parent.postMessage(message, "*");
-};
-// Enviar resultados automáticamente cuando se completen todas las coincidencias
-useEffect(() => {
-  if (completedMatches === totalMatches && totalMatches > 0) {
-    sendResultsToHost();
-  }
-}, [completedMatches, totalMatches]);
+const isGameCompleted =
+  completedMatches === displayQuestions.length &&
+  displayQuestions.length > 0;
 
+  
+ 
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent<IncomingGameMessage>) => {
@@ -166,8 +180,7 @@ useEffect(() => {
           o.trim()
         ) || [];
 
-      // Allow null origin for PWA standalone mode
-      // When installed as PWA on Android/iOS, origin is often null
+    
       const isAllowedOrigin =
         event.origin === "null" || allowedOrigins.includes(event.origin);
 
@@ -181,19 +194,21 @@ useEffect(() => {
         return;
       }
        // Validar Estructura del Mensaje
-      if (!event.data.currentQuestion || !event.data.questions) {
+      if (!event.data.currentQuestion || !event.data.otherQuestions) {
         setError("Invalid data received");
         return;
       }
       
-       // Normalizamos datos que vienen del host
+      
        const normalizedCurrent = normalizeQuestion(
         event.data.currentQuestion
       );
 
-       const normalizedQuestions = event.data.questions.map(
+       const normalizedQuestions = event.data.otherQuestions.map(
          normalizeQuestion
     );
+    setMainQuestion(normalizedCurrent);
+
 
 // Construimos el pool total asegurando la pregunta principal
 const allQ = buildAllQuestions(
@@ -208,11 +223,10 @@ const allQ = buildAllQuestions(
         4
       );
 
-      const pool = buildExplanationPool(allQ);
+      
 
       const expDisplay = pickDisplayExplanations(
-        pool,
-        normalizedCurrent,
+        qDisplay,
         4
       );
 
@@ -226,30 +240,41 @@ const allQ = buildAllQuestions(
 
     window.addEventListener("message", messageHandler);
 
+
     return () => {
       window.removeEventListener("message", messageHandler);
     };
    
 
+
   }, []);
+  // Enviar resultados al host
+const sendFinalResultToHost = () => {
+  if (!mainQuestion) return;
+
+  const answerData = {
+    answeredCorrectly,
+    questionId: mainQuestion._id,
+    questionText: mainQuestion.questionText,
+    userAnswer: mainExplanation?.explanationText || "",
+  };
+
+  const origins = import.meta.env.VITE_IFRAME_ORIGIN
+    ? import.meta.env.VITE_IFRAME_ORIGIN.split(",").map((o: string) => o.trim())
+    : [];
+
+  origins.forEach((origin: string) => {
+    window.parent.postMessage(answerData, origin);
+  });
+
+  console.log("📤 Resultado FINAL enviado al host:", answerData);
+};
+
+
+
     // UI mínima
    return (
-
-
        <>
-       <div
-  style={{
-    marginBottom: "16px",
-    padding: "8px 12px",
-    borderRadius: "8px",
-    backgroundColor: "#f3f4f6",
-    textAlign: "center",
-    fontWeight: 500,
-    color: "#111827",
-  }}
->
-  Progreso: {completedMatches} / {totalMatches}
-</div>
 
        <div style={{ display: "flex", gap: "3rem" }}>
        {/* Preguntas */}
@@ -257,7 +282,9 @@ const allQ = buildAllQuestions(
          <h3>Preguntas</h3>
 
             {displayQuestions.map((q) => {
-           const match = getMatchResultForQuestion(q._id);
+
+           const match = matches.find(m => m.questionId === q._id);
+
 
      return (
 
@@ -274,9 +301,7 @@ const allQ = buildAllQuestions(
         border: "2px solid",
         cursor: match ? "default" : "pointer",
         backgroundColor: match
-          ? match.isCorrect
-          ? "#dcfce7"
-          : "#fee2e2"
+          ? match.pairColor
           : selectedQuestion === q._id
          ? "#e0e7ff"
         : "#fff",
@@ -290,7 +315,7 @@ const allQ = buildAllQuestions(
         color: "#111827",
       }}
     >
-      <strong>{q.text}</strong>
+      <strong>{q.questionText}</strong>
 
       {match && (
         <div style={{ marginTop: "6px", fontSize: "20px" }}>
@@ -309,6 +334,10 @@ const allQ = buildAllQuestions(
              {displayExplanations.map((e) => {
   const used = isExplanationUsed(e._id);
 
+  const matchForExplanation = matches.find(
+  m => m.explanationId === e._id
+  );
+
   return (
     <div
       key={e._id}
@@ -323,13 +352,13 @@ const allQ = buildAllQuestions(
         borderRadius: "8px",
         border: "2px solid #d1d5db",
         cursor: used ? "not-allowed" : "pointer",
-        backgroundColor: used ? "#e5e7eb" : "#fff",
+        backgroundColor: matchForExplanation? matchForExplanation.pairColor : "#fff",
         opacity: used ? 0.6 : 1,
 
         color: "#111827",
       }}
     >
-      {e.text}
+      {e.explanationText}
     </div>
   );
 })}
@@ -340,14 +369,50 @@ const allQ = buildAllQuestions(
          )}
        </div>
 
-     </div><button onClick={sendResultsToHost} style={{ marginTop: "20px" }}>
-         Finalizar Juego
-       </button>
-       </>
-       
+     </div>
 
+
+       {isGameCompleted && (
+  <div
+    style={{
+      marginTop: "24px",
+      padding: "12px",
+      borderRadius: "10px",
+      backgroundColor: "#ecfeff",
+      textAlign: "center",
+      fontWeight: 600,
+      color: "#0f172a",
+      border: "2px solid #06b6d4",
+    }}
+  >
+    Resultado final: {totalMatches} / {correctMatches} correctas
+  </div>
+
+)}
+<button
+      onClick={sendFinalResultToHost}
+      style={{
+        marginTop: "16px",
+        padding: "10px 16px",
+        borderRadius: "8px",
+        border: "none",
+        backgroundColor: "#2563eb",
+        color: "#fff",
+        fontWeight: 600,
+        cursor: "pointer",
+      }}
+    >
+      Enviar resultado
+    </button>
+
+       </>   
+       
   );
+
+
+  
 }
+
 
 export default App;
 

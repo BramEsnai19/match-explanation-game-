@@ -1,7 +1,7 @@
 
 export interface Explanation {
   _id: string;
-  text: string;
+  explanationText: string;
   questionId: string;
   createdBy: string | null;
   status: string;
