@@ -140,15 +140,23 @@ function App() {
     const colorIndex = matches.length % matchColors.length;
     const baseColor = matchColors[colorIndex];
 
-    setMatches((prev) => [
-      ...prev,
-      {
-        questionId: q._id,
-        explanationId: exp._id,
-        isCorrect: correct,
-        pairColor: baseColor,
-      },
-    ]);
+    setMatches((prev) => {
+      const newMatch = [
+        ...prev,
+        {
+          questionId: q._id,
+          explanationId: exp._id,
+          isCorrect: correct,
+          pairColor: baseColor,
+        },
+      ];
+
+      if (newMatch.length === displayQuestions.length) {
+        sendFinalResultToHost();
+      }
+
+      return newMatch;
+    });
     setDisabledExplanationIds((prev) => [...prev, exp._id]);
     setSelectedQuestion(null);
   };
@@ -342,21 +350,6 @@ function App() {
           Resultado final: {totalMatches} / {correctMatches} correctas
         </div>
       )}
-      <button
-        onClick={sendFinalResultToHost}
-        style={{
-          marginTop: "16px",
-          padding: "10px 16px",
-          borderRadius: "8px",
-          border: "none",
-          backgroundColor: "#2563eb",
-          color: "#fff",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Enviar resultado
-      </button>
     </>
   );
 }
