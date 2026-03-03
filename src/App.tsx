@@ -20,13 +20,8 @@ function App() {
   const totalMatches = displayQuestions.length;
   const completedMatches = matches.length;
   const correctMatches = matches.filter((m) => m.isCorrect).length;
-  const answeredCorrectly = totalMatches > 0 && correctMatches === totalMatches;
   const [mainQuestion, setMainQuestion] = useState<Question | null>(null);
-  const mainMatch = matches.find((m) => m.questionId === mainQuestion?._id);
-
-  const mainExplanation = displayExplanations.find(
-    (e) => e._id === mainMatch?.explanationId,
-  );
+  
 
   const matchColors = [
     "#BFDBFE", // azul pastel
@@ -151,9 +146,13 @@ function App() {
         },
       ];
 
-      if (newMatch.length === displayQuestions.length) {
-        sendFinalResultToHost();
-      }
+       if (newMatch.length === displayQuestions.length) {
+    const total = displayQuestions.length;
+    const correctCount = newMatch.filter((m) => m.isCorrect).length;
+    const allCorrect = total > 0 && correctCount === total;
+
+    sendFinalResultToHost(newMatch, allCorrect);
+   }
 
       return newMatch;
     });
@@ -218,8 +217,18 @@ function App() {
     };
   }, []);
   // Enviar resultados al host
-  const sendFinalResultToHost = () => {
+  const sendFinalResultToHost = (
+    finalMatches: Match[],
+    answeredCorrectly: boolean,
+  ) => {
     if (!mainQuestion) return;
+
+    const mainMatch = finalMatches.find(
+    (m) => m.questionId === mainQuestion._id
+  );
+    const mainExplanation = displayExplanations.find(
+    (e) => e._id === mainMatch?.explanationId
+  );
 
     const answerData = {
       answeredCorrectly,
