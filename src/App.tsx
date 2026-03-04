@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import "./App.css";
 import type { Question } from "./interfaces/question.interface";
 import type { IncomingGameMessage, Match } from "./interfaces/Types";
 import type { Explanation } from "./interfaces/explanation.interface";
@@ -16,12 +15,10 @@ function App() {
   >([]);
 
   const [matches, setMatches] = useState<Match[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const totalMatches = displayQuestions.length;
   const completedMatches = matches.length;
   const correctMatches = matches.filter((m) => m.isCorrect).length;
   const [mainQuestion, setMainQuestion] = useState<Question | null>(null);
-  
 
   const matchColors = [
     "#BFDBFE", // azul pastel
@@ -146,13 +143,13 @@ function App() {
         },
       ];
 
-       if (newMatch.length === displayQuestions.length) {
-    const total = displayQuestions.length;
-    const correctCount = newMatch.filter((m) => m.isCorrect).length;
-    const allCorrect = total > 0 && correctCount === total;
+      if (newMatch.length === displayQuestions.length) {
+        const total = displayQuestions.length;
+        const correctCount = newMatch.filter((m) => m.isCorrect).length;
+        const allCorrect = total > 0 && correctCount === total;
 
-    sendFinalResultToHost(newMatch, allCorrect);
-   }
+        sendFinalResultToHost(newMatch, allCorrect);
+      }
 
       return newMatch;
     });
@@ -193,27 +190,37 @@ function App() {
       }
 
       const normalizedCurrent = normalizeQuestion(event.data.currentQuestion);
-
       const normalizedQuestions =
         event.data.otherQuestions.map(normalizeQuestion);
+
+      // Reset round state when host sends a new question
+      setSelectedQuestion(null);
+      setDisabledExplanationIds([]);
+      setMatches([]);
+
+      // build new board for current question
       setMainQuestion(normalizedCurrent);
-
-      // Construimos el pool total asegurando la pregunta principal
       const allQ = buildAllQuestions(normalizedCurrent, normalizedQuestions);
-
       const qDisplay = pickDisplayQuestions(allQ, normalizedCurrent._id, 4);
-
       const expDisplay = pickDisplayExplanations(qDisplay, 4);
 
       setDisplayQuestions(qDisplay);
       setDisplayExplanations(expDisplay);
-      setError(null);
     };
 
     window.addEventListener("message", messageHandler);
 
+    // Send ready signal AFTER message listener is set up
+    // Use a small delay to ensure the listener is definitely registered
+    const readyTimer = setTimeout(() => {
+      // In PWA standalone mode, origin can be null, so we use "*" as fallback
+      // The parent will handle origin validation when receiving the message
+      window.parent.postMessage({ type: "GAME_READY" }, "*");
+    }, 200); // 200ms delay to ensure listener is ready
+
     return () => {
       window.removeEventListener("message", messageHandler);
+      clearTimeout(readyTimer);
     };
   }, []);
   // Enviar resultados al host
@@ -224,11 +231,11 @@ function App() {
     if (!mainQuestion) return;
 
     const mainMatch = finalMatches.find(
-    (m) => m.questionId === mainQuestion._id
-  );
+      (m) => m.questionId === mainQuestion._id,
+    );
     const mainExplanation = displayExplanations.find(
-    (e) => e._id === mainMatch?.explanationId
-  );
+      (e) => e._id === mainMatch?.explanationId,
+    );
 
     const answerData = {
       answeredCorrectly,
@@ -337,9 +344,6 @@ function App() {
               </div>
             );
           })}
-          {error && (
-            <p style={{ color: "red", marginBottom: "12px" }}>{error}</p>
-          )}
         </div>
       </div>
 
