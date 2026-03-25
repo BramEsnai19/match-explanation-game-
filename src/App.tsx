@@ -21,6 +21,7 @@ function App() {
   const completedMatches = matches.length;
   const correctMatches = matches.filter((m) => m.isCorrect).length;
   const [mainQuestion, setMainQuestion] = useState<Question | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
 
   const matchColors = [
@@ -151,7 +152,9 @@ function App() {
     const correctCount = newMatch.filter((m) => m.isCorrect).length;
     const allCorrect = total > 0 && correctCount === total;
 
+    setTimeout(() => {
     sendFinalResultToHost(newMatch, allCorrect);
+  }, 1500);
    }
 
       return newMatch;
@@ -168,6 +171,8 @@ function App() {
 
   useEffect(() => {
     const messageHandler = (event: MessageEvent<IncomingGameMessage>) => {
+
+      setIsLoading(true);
       //Validar Origen (Seguridad)
       const allowedOrigins =
         import.meta.env.VITE_IFRAME_ORIGIN?.split(",").map((o: string) =>
@@ -208,7 +213,9 @@ function App() {
       setDisplayQuestions(qDisplay);
       setDisplayExplanations(expDisplay);
       setError(null);
+      setIsLoading(false);
     };
+
 
     window.addEventListener("message", messageHandler);
 
@@ -216,6 +223,60 @@ function App() {
       window.removeEventListener("message", messageHandler);
     };
   }, []);
+
+  if (isLoading) {
+  return (
+      <div className="min-h-full w-full flex justify-center items-center flex-col select-none bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Animated brain icon */}
+          <div className="mb-8 text-7xl animate-pulse">
+            <span
+              className="inline-block animate-bounce"
+              style={{ animationDelay: "0s" }}
+            >
+              🧠
+            </span>
+          </div>
+
+          {/* Text */}
+          <h1 className="text-3xl font-bold text-gray-800 mb-3 text-center">
+            Pensando en una explicación...
+          </h1>
+
+          <p className="text-gray-600 text-lg mb-6 text-center max-w-xs">
+            Preparando tu desafío mental
+          </p>
+
+          {/* Loading dots */}
+          <div className="flex gap-2">
+            <div
+              className="w-3 h-3 bg-blue-300 rounded-full animate-bounce"
+              style={{ animationDelay: "0s" }}
+            ></div>
+            <div
+              className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"
+              style={{ animationDelay: "0.2s" }}
+            ></div>
+            <div
+              className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "0.4s" }}
+            ></div>
+          </div>
+        </div>
+      </div>
+    );
+}
+
+
+
   // Enviar resultados al host
   const sendFinalResultToHost = (
     finalMatches: Match[],
