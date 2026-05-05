@@ -160,7 +160,7 @@ function App() {
       return newMatch;
     });
     setDisabledExplanationIds((prev) => [...prev, exp._id]);
-    setSelectedQuestion(null);
+    setSelectedQuestion(null); // Resetar para evitar múltiples clics sin seleccionar nueva pregunta
   };
 
   const isExplanationUsed = (explanationId: string) =>
