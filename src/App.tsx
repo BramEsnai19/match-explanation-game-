@@ -172,7 +172,6 @@ function App() {
   useEffect(() => {
     const messageHandler = (event: MessageEvent<IncomingGameMessage>) => {
 
-      setIsLoading(true);
       //Validar Origen (Seguridad)
       const allowedOrigins =
         import.meta.env.VITE_IFRAME_ORIGIN?.split(",").map((o: string) =>
@@ -196,6 +195,11 @@ function App() {
         console.error("Invalid data received", event.data);
         return;
       }
+
+      // Reset game state for new round
+      setSelectedQuestion(null);
+      setMatches([]);
+      setDisabledExplanationIds([]);
 
       const normalizedCurrent = normalizeQuestion(event.data.currentQuestion);
 
@@ -224,9 +228,43 @@ function App() {
     };
   }, []);
 
+    // Enviar resultados al host
+  const sendFinalResultToHost = (
+    finalMatches: Match[],
+    answeredCorrectly: boolean,
+  ) => {
+    if (!mainQuestion) return;
+
+    const mainMatch = finalMatches.find(
+    (m) => m.questionId === mainQuestion._id
+  );
+    const mainExplanation = displayExplanations.find(
+    (e) => e._id === mainMatch?.explanationId
+  );
+
+    const answerData = {
+      answeredCorrectly,
+      questionId: mainQuestion._id,
+      questionText: mainQuestion.questionText,
+      userAnswer: mainExplanation?.explanationText || "",
+    };
+
+    const origins = import.meta.env.VITE_IFRAME_ORIGIN
+      ? import.meta.env.VITE_IFRAME_ORIGIN.split(",").map((o: string) =>
+          o.trim(),
+        )
+      : [];
+
+    origins.forEach((origin: string) => {
+      window.parent.postMessage(answerData, origin);
+    });
+
+    console.log("📤 Resultado FINAL enviado al host:", answerData);
+  };
+
   if (isLoading) {
-  return (
-      <div className="min-h-full w-full flex justify-center items-center flex-col select-none bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
+    return (
+      <div className="min-h-screen w-full flex justify-center items-center flex-col select-none bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 fixed inset-0">
         {/* Animated gradient background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
@@ -273,43 +311,9 @@ function App() {
         </div>
       </div>
     );
-}
+  }
+  
 
-
-
-  // Enviar resultados al host
-  const sendFinalResultToHost = (
-    finalMatches: Match[],
-    answeredCorrectly: boolean,
-  ) => {
-    if (!mainQuestion) return;
-
-    const mainMatch = finalMatches.find(
-    (m) => m.questionId === mainQuestion._id
-  );
-    const mainExplanation = displayExplanations.find(
-    (e) => e._id === mainMatch?.explanationId
-  );
-
-    const answerData = {
-      answeredCorrectly,
-      questionId: mainQuestion._id,
-      questionText: mainQuestion.questionText,
-      userAnswer: mainExplanation?.explanationText || "",
-    };
-
-    const origins = import.meta.env.VITE_IFRAME_ORIGIN
-      ? import.meta.env.VITE_IFRAME_ORIGIN.split(",").map((o: string) =>
-          o.trim(),
-        )
-      : [];
-
-    origins.forEach((origin: string) => {
-      window.parent.postMessage(answerData, origin);
-    });
-
-    console.log("📤 Resultado FINAL enviado al host:", answerData);
-  };
 
   // UI mínima
   return (
