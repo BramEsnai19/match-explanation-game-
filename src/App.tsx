@@ -223,8 +223,13 @@ function App() {
 
     window.addEventListener("message", messageHandler);
 
+    const readyTimer = setTimeout(() => {
+      window.parent.postMessage({ type: "GAME_READY" }, "*");
+    }, 200);
+
     return () => {
       window.removeEventListener("message", messageHandler);
+      clearTimeout(readyTimer);
     };
   }, []);
 
