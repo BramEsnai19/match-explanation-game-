@@ -3,6 +3,7 @@ import "./App.css";
 import type { Question } from "./interfaces/question.interface";
 import type { IncomingGameMessage, Match } from "./interfaces/Types";
 import type { Explanation } from "./interfaces/explanation.interface";
+import { BackgroundSVG } from "./components/BackgroundSVG";
 
 function App() {
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -323,10 +324,19 @@ function App() {
   // UI mínima
   return (
     <>
-      <div style={{ display: "flex", gap: "3rem" }}>
+      <BackgroundSVG />
+      <div style={{ display: "flex", gap: "3rem", padding: "2rem", justifyContent: "center", position: "relative", zIndex: 10 }}>
         {/* Preguntas */}
-        <div>
-          <h3>Preguntas</h3>
+        <div style={{ 
+          backgroundColor: "rgba(255, 255, 255, 0.8)", 
+          backdropFilter: "blur(10px)",
+          padding: "1.5rem", 
+          borderRadius: "12px", 
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)", 
+          border: "1px solid rgba(255, 255, 255, 0.5)",
+          minWidth: "300px"
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: "1rem", color: "#333", fontWeight: "600" }}>Preguntas</h3>
 
           {displayQuestions.map((q) => {
             const match = matches.find((m) => m.questionId === q._id);
@@ -334,6 +344,7 @@ function App() {
             return (
               <div
                 key={q._id}
+                className={match ? undefined : "hover-card"}
                 onClick={() => {
                   if (!match) setSelectedQuestion(q._id);
                 }}
@@ -353,8 +364,8 @@ function App() {
                       ? "#22c55e"
                       : "#ef4444"
                     : "#d1d5db",
-
-                  // 🔴 AGREGA ESTO
+                  boxShadow: "inset 0 8px 24px rgba(15, 23, 42, 0.08)",
+                  transition: "transform 0.18s ease-out, box-shadow 0.18s ease-out",
                   color: "#111827",
                 }}
               >
@@ -371,8 +382,16 @@ function App() {
         </div>
 
         {/* Explicaciones */}
-        <div>
-          <h3>Explicaciones</h3>
+        <div style={{ 
+          backgroundColor: "rgba(255, 255, 255, 0.8)", 
+          backdropFilter: "blur(10px)",
+          padding: "1.5rem", 
+          borderRadius: "12px", 
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)", 
+          border: "1px solid rgba(255, 255, 255, 0.5)",
+          minWidth: "300px"
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: "1rem", color: "#333", fontWeight: "600" }}>Explicaciones</h3>
 
           {displayExplanations.map((e) => {
             const used = isExplanationUsed(e._id);
@@ -384,6 +403,7 @@ function App() {
             return (
               <div
                 key={e._id}
+                className={!used ? "hover-card" : undefined}
                 onClick={() => {
                   if (!used && selectedQuestion) {
                     handleMatch(e._id);
@@ -399,7 +419,8 @@ function App() {
                     ? matchForExplanation.pairColor
                     : "#fff",
                   opacity: used ? 0.6 : 1,
-
+                  boxShadow: "inset 0 8px 24px rgba(15, 23, 42, 0.08)",
+                  transition: "transform 0.18s ease-out, box-shadow 0.18s ease-out",
                   color: "#111827",
                 }}
               >
@@ -416,14 +437,18 @@ function App() {
       {isGameCompleted && (
         <div
           style={{
+            position: "relative",
+            zIndex: 10,
             marginTop: "24px",
-            padding: "12px",
+            padding: "16px 24px",
             borderRadius: "10px",
-            backgroundColor: "#ecfeff",
+            backgroundColor: "rgba(255, 255, 255, 0.85)",
+            backdropFilter: "blur(10px)",
             textAlign: "center",
             fontWeight: 600,
             color: "#0f172a",
             border: "2px solid #06b6d4",
+            boxShadow: "0 8px 32px rgba(6, 182, 212, 0.1)"
           }}
         >
           Resultado final: {totalMatches} / {correctMatches} correctas
