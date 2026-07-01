@@ -23,16 +23,18 @@ a:hover {
 }
 
 html,
-body {
+body, 
+
+#root {
   margin: 0;
-  place-items: center;
-  min-width: 100px;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
 }
 
-#root {
-  width: 100%;
-  min-height: 100vh;
+body {
+
+  overflow-x: hidden;
 }
 
 h1 {
