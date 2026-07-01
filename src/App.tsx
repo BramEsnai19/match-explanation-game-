@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./App.css";
 import type { Question } from "./interfaces/question.interface";
 import type { IncomingGameMessage, Match } from "./interfaces/Types";
@@ -23,6 +23,7 @@ function App() {
   const correctMatches = matches.filter((m) => m.isCorrect).length;
   const [mainQuestion, setMainQuestion] = useState<Question | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
 
   const matchColors = [
@@ -170,69 +171,70 @@ function App() {
   const isGameCompleted =
     completedMatches === displayQuestions.length && displayQuestions.length > 0;
 
-  useEffect(() => {
-    const messageHandler = (event: MessageEvent<IncomingGameMessage>) => {
+   useEffect(() => {
+   const messageHandler = (event: MessageEvent<IncomingGameMessage>) => {
 
-      //Validar Origen (Seguridad)
-      const allowedOrigins =
-        import.meta.env.VITE_IFRAME_ORIGIN?.split(",").map((o: string) =>
-          o.trim(),
-        ) || [];
+       //Validar Origen (Seguridad)
+       const allowedOrigins =
+         import.meta.env.VITE_IFRAME_ORIGIN?.split(",").map((o: string) =>
+           o.trim(),
+         ) || [];
 
-      const isAllowedOrigin =
-        event.origin === "null" || allowedOrigins.includes(event.origin);
+       const isAllowedOrigin =
+         event.origin === "null" || allowedOrigins.includes(event.origin);
 
-      if (!isAllowedOrigin) {
-        console.error(
-          "Origin not allowed:",
-          event.origin,
-          "Allowed origins:",
-          allowedOrigins,
-        );
-        return;
-      }
-      // Validar Estructura del Mensaje
-      if (!event.data.currentQuestion || !event.data.otherQuestions) {
-        console.error("Invalid data received", event.data);
-        return;
-      }
+       if (!isAllowedOrigin) {
+         console.error(
+           "Origin not allowed:",
+           event.origin,
+           "Allowed origins:",
+           allowedOrigins,
+         );
+         return;
+       }
+       // Validar Estructura del Mensaje
+       if (!event.data.currentQuestion || !event.data.otherQuestions) {
+         console.error("Invalid data received", event.data);
+         return;
+       }
 
-      // Reset game state for new round
-      setSelectedQuestion(null);
-      setMatches([]);
-      setDisabledExplanationIds([]);
+       // Reset game state for new round
+       setSelectedQuestion(null);
+       setMatches([]);
+       setDisabledExplanationIds([]);
 
-      const normalizedCurrent = normalizeQuestion(event.data.currentQuestion);
+       const normalizedCurrent = normalizeQuestion(event.data.currentQuestion);
 
-      const normalizedQuestions =
-        event.data.otherQuestions.map(normalizeQuestion);
-      setMainQuestion(normalizedCurrent);
+       const normalizedQuestions =
+         event.data.otherQuestions.map(normalizeQuestion);
+       setMainQuestion(normalizedCurrent);
 
-      // Construimos el pool total asegurando la pregunta principal
-      const allQ = buildAllQuestions(normalizedCurrent, normalizedQuestions);
+       // Construimos el pool total asegurando la pregunta principal
+       const allQ = buildAllQuestions(normalizedCurrent, normalizedQuestions);
 
-      const qDisplay = pickDisplayQuestions(allQ, normalizedCurrent._id, 4);
+       const qDisplay = pickDisplayQuestions(allQ, normalizedCurrent._id, 4);
 
-      const expDisplay = pickDisplayExplanations(qDisplay, 4);
+       const expDisplay = pickDisplayExplanations(qDisplay, 4);
 
-      setDisplayQuestions(qDisplay);
-      setDisplayExplanations(expDisplay);
-      setError(null);
-      setIsLoading(false);
-    };
+       setDisplayQuestions(qDisplay);
+       setDisplayExplanations(expDisplay);
+       setError(null);
+       setIsLoading(false);
+     };
 
 
-    window.addEventListener("message", messageHandler);
+     window.addEventListener("message", messageHandler);
 
-    const readyTimer = setTimeout(() => {
-      window.parent.postMessage({ type: "GAME_READY" }, "*");
-    }, 200);
 
-    return () => {
-      window.removeEventListener("message", messageHandler);
-      clearTimeout(readyTimer);
-    };
-  }, []);
+     const readyTimer = setTimeout(() => {
+       window.parent.postMessage({ type: "GAME_READY" }, "*");
+     }, 200);
+
+     return () => {
+       window.removeEventListener("message", messageHandler);
+       clearTimeout(readyTimer);
+     };
+   }, []);
 
     // Enviar resultados al host
   const sendFinalResultToHost = (
@@ -266,6 +268,14 @@ function App() {
     });
 
     console.log("📤 Resultado FINAL enviado al host:", answerData);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0; 
+      }
+    }, [displayQuestions]);
+
+
   };
 
   if (isLoading) {
@@ -325,96 +335,104 @@ function App() {
   return (
     <>
       <BackgroundSVG />
-      <div style={{ display: "flex", gap: "3rem", padding: "2rem", justifyContent: "center", position: "relative", zIndex: 10 }}>
-        {/* Preguntas */}
-        <div style={{ 
-          backgroundColor: "rgba(255, 255, 255, 0.8)", 
-          backdropFilter: "blur(10px)",
-          padding: "1.5rem", 
-          borderRadius: "12px", 
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)", 
-          border: "1px solid rgba(255, 255, 255, 0.5)",
-          minWidth: "300px"
-        }}>
-          <h3 style={{ marginTop: 0, marginBottom: "1rem", color: "#333", fontWeight: "600" }}>Preguntas</h3>
+      <div style={{ display: "flex", justifyContent: "center", position: "relative", padding: "0.75rem", boxSizing: "border-box"}}>
+        <div ref={scrollContainerRef} style={{display: "flex", gap: "0.75rem", overflowX: "auto", overflowY: "hidden", width: "fit-content", maxWidth: "100%", alignItems: "flex-start", flexWrap: "nowrap", WebkitOverflowScrolling: "touch"}}>
+          {/* Preguntas */}
+          <div style={{ 
+            backgroundColor: "rgba(255, 255, 255, 0.8)", 
+            backdropFilter: "blur(10px)",
+            padding: "1rem", 
+            borderRadius: "12px", 
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)", 
+            border: "1px solid rgba(255, 255, 255, 0.5)",
+            width: "min(240px, 85vw)",
+            overflowY: "auto",
+            flex: "0 0 auto"
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "#333", fontWeight: "600", fontSize: "1.1rem" }}>Preguntas</h3>
+            <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+              {displayQuestions.map((q) => {
+                const match = matches.find((m) => m.questionId === q._id);
 
-          {displayQuestions.map((q) => {
-            const match = matches.find((m) => m.questionId === q._id);
+                return (
+                  <div
+                    key={q._id}
+                    className={match ? undefined : "hover-card"}
+                    onClick={() => {
+                      if (!match) setSelectedQuestion(q._id);
+                    }}
+                    style={{
+                      padding: "8px 10px",
+                      marginBottom: "8px",
+                      borderRadius: "8px",
+                      border: "2px solid",
+                      cursor: match ? "default" : "pointer",
+                      fontSize: "0.9rem",
+                      backgroundColor: match
+                        ? match.pairColor
+                        : selectedQuestion === q._id
+                          ? "#e0e7ff"
+                          : "#fff",
+                      borderColor: match
+                        ? match.isCorrect
+                          ? "#22c55e"
+                          : "#ef4444"
+                        : "#d1d5db",
+                      boxShadow: "inset 0 8px 24px rgba(15, 23, 42, 0.08)",
+                      transition: "transform 0.18s ease-out, box-shadow 0.18s ease-out",
+                      color: "#111827",
+                    }}
+                  >
+                    <strong>{q.questionText}</strong>
 
-            return (
-              <div
-                key={q._id}
-                className={match ? undefined : "hover-card"}
-                onClick={() => {
-                  if (!match) setSelectedQuestion(q._id);
-                }}
-                style={{
-                  padding: "12px",
-                  marginBottom: "10px",
-                  borderRadius: "8px",
-                  border: "2px solid",
-                  cursor: match ? "default" : "pointer",
-                  backgroundColor: match
-                    ? match.pairColor
-                    : selectedQuestion === q._id
-                      ? "#e0e7ff"
-                      : "#fff",
-                  borderColor: match
-                    ? match.isCorrect
-                      ? "#22c55e"
-                      : "#ef4444"
-                    : "#d1d5db",
-                  boxShadow: "inset 0 8px 24px rgba(15, 23, 42, 0.08)",
-                  transition: "transform 0.18s ease-out, box-shadow 0.18s ease-out",
-                  color: "#111827",
-                }}
-              >
-                <strong>{q.questionText}</strong>
-
-                {match && (
-                  <div style={{ marginTop: "6px", fontSize: "20px" }}>
-                    {match.isCorrect ? "✅" : "❌"}
+                    {match && (
+                      <div style={{ marginTop: "6px", fontSize: "20px" }}>
+                        {match.isCorrect ? "✅" : "❌"}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
 
         {/* Explicaciones */}
         <div style={{ 
           backgroundColor: "rgba(255, 255, 255, 0.8)", 
           backdropFilter: "blur(10px)",
-          padding: "1.5rem", 
+          padding: "1rem", 
           borderRadius: "12px", 
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)", 
           border: "1px solid rgba(255, 255, 255, 0.5)",
-          minWidth: "300px"
+          width: "min(240px, 85vw)",
+          overflowY: "auto",
+          flex: "0 0 auto"
         }}>
-          <h3 style={{ marginTop: 0, marginBottom: "1rem", color: "#333", fontWeight: "600" }}>Explicaciones</h3>
+          <h3 style={{ marginTop: 0, marginBottom: "0.75rem", color: "#333", fontWeight: "600", fontSize: "1.1rem" }}>Explicaciones</h3>
+          <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+            {displayExplanations.map((e) => {
+              const used = isExplanationUsed(e._id);
 
-          {displayExplanations.map((e) => {
-            const used = isExplanationUsed(e._id);
+              const matchForExplanation = matches.find(
+                (m) => m.explanationId === e._id,
+              );
 
-            const matchForExplanation = matches.find(
-              (m) => m.explanationId === e._id,
-            );
-
-            return (
-              <div
-                key={e._id}
-                className={!used ? "hover-card" : undefined}
-                onClick={() => {
-                  if (!used && selectedQuestion) {
-                    handleMatch(e._id);
-                  }
-                }}
+              return (
+                <div
+                  key={e._id}
+                  className={!used ? "hover-card" : undefined}
+                  onClick={() => {
+                    if (!used && selectedQuestion) {
+                      handleMatch(e._id);
+                    }
+                  }}
                 style={{
-                  padding: "12px",
-                  marginBottom: "10px",
+                  padding: "8px 10px",
+                  marginBottom: "8px",
                   borderRadius: "8px",
                   border: "2px solid #d1d5db",
                   cursor: used ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem",
                   backgroundColor: matchForExplanation
                     ? matchForExplanation.pairColor
                     : "#fff",
@@ -431,6 +449,8 @@ function App() {
           {error && (
             <p style={{ color: "red", marginBottom: "12px" }}>{error}</p>
           )}
+            </div>
+          </div>
         </div>
       </div>
 

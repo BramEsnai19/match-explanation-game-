@@ -7,13 +7,13 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
 }
 
 #root {
   background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 50%, #fff5ff 100%);
   min-height: 100vh;
   position: relative;
+  overflow-x: visible;
 }
 
 
@@ -118,7 +118,22 @@ svg {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.4);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
 }
 
 ::-webkit-scrollbar-track {
